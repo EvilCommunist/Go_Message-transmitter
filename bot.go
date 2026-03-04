@@ -92,6 +92,7 @@ func main() {
 		conn, err := listener.Accept()
 		if err != nil {
 			//			fmt.Printf("Error acquired while recieving connection %s\n", err)
+			continue
 		}
 		go resendIntoBot(conn)
 	}
