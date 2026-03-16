@@ -1,10 +1,8 @@
 package vk
 
 import (
-	"encoding/json"
-	"io"
+	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
@@ -15,42 +13,26 @@ const (
 	MESSAGE      = "message"
 )
 
-func ResendMessageVK(method string, parameters map[string]string,
+func ResendMessage(method string, parameters map[string]string,
 	vkVersion string, vkEndpoint string, vkToken string) {
 	parameters[ACCESS_TOKEN] = vkToken
 	parameters[VERSION] = vkVersion
 
 	query := buildQuery(parameters)
-	reqUrl := vkEndpoint + method + "?" + query
+	reqUrl := fmt.Sprintf("%s%s?%s", vkEndpoint, method, query)
 
-	response, err := http.Get(reqUrl)
+	_, err := http.Get(reqUrl)
 	if err != nil {
 		//		fmt.Printf("The error acquired while sending message %s to bot: %s", parameters[MESSAGE], err)
 		return
 	}
-	defer response.Body.Close()
-
-	body, errorResp := io.ReadAll(response.Body)
-	if errorResp != nil {
-		//		fmt.Println("Error acquired while executing VK API method!")
-		//		fmt.Println(errorResp)
-		return
-	}
-
-	bodyStr := string(body)
-	bodyStr, _ = url.QueryUnescape(bodyStr)
-	var responseData = make(map[string]string)
-	json.Unmarshal([]byte(bodyStr), &responseData)
-
-	if responseData[RESPONSE] == "" {
-		return
-	}
+	// Resender works as a daemon without logger so any body check will give nothing
 }
 
 func buildQuery(paramMap map[string]string) string {
 	var query string = ""
 	for key, value := range paramMap {
-		query += key + "=" + value + "&"
+		query += fmt.Sprintf("%s=%s&", key, value)
 	}
 
 	return strings.TrimRight(query, "&")

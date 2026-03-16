@@ -14,15 +14,18 @@ import (
 
 	"github.com/goloop/env"
 
+	"bot/api/max"
 	"bot/api/vk"
 )
 
 const (
 	// .env constants
-	DEFAULT_PORT    = ":9090" // FOR TEST: 9080; FOR DEPLOY 9090
-	OK_RESPONSE     = "HTTP/1.1 200 OK\r\n"
-	NOT_OK_RESPONCE = "HTTP/1.1 500 ERROR\r\n"
-	TIMEOUT         = 5 * time.Second
+	DEFAULT_PORT        = ":9090" // FOR TEST: 9080; FOR DEPLOY 9090
+	DEFAULT_DESTINATION = "ALL"
+	VK_DESTINATION      = "VK"
+	MAX_DESTINATION     = "MAX"
+	OK_RESPONSE         = "HTTP/1.1 200 OK\r\n"
+	TIMEOUT             = 5 * time.Second
 
 	// Zabbix constants
 	MESSAGE      = "Message"
@@ -34,6 +37,11 @@ const (
 	VK_CHAT             = "peer_id"
 	VK_MESSAGE          = "message"
 	VK_UNIQUE_CHECK_REQ = "random_id"
+	NOT_NEEDED          = "0"
+	VK_MESSAGES_METHOD  = "messages.send"
+
+	// MAX constants
+	MAX_MESSAGES_METHOD = "messages"
 )
 
 var (
@@ -42,13 +50,19 @@ var (
 	VK_API_ENDPOINT     string
 	VK_API_ACCESS_TOKEN string
 
-	PORT string
+	MAX_API_ENDPOINT     string
+	MAX_API_ACCESS_TOKEN string
+
+	PORT        string
+	SEND_TARGET string = "ALL"
 )
 
 type Config struct {
-	Version  string `env:"VK_API_VER" def:"NONE"`
-	Endpoint string `env:"VK_API_ENDPOINT" def:"NONE"`
-	Token    string `env:"VK_API_ACCESS_TOKEN" def:"NONE"`
+	VKVersion   string `env:"VK_API_VER" def:"NONE"`
+	VKEndpoint  string `env:"VK_API_ENDPOINT" def:"NONE"`
+	VKToken     string `env:"VK_API_ACCESS_TOKEN" def:"NONE"`
+	MAXEndpoint string `env:"MAX_API_ENDPOINT" def:"NONE"`
+	MAXToken    string `env:"MAX_API_ACCESS_TOKEN" def:"NONE"`
 }
 
 func init() {
@@ -66,10 +80,13 @@ func init() {
 	}
 
 	flag.StringVar(&PORT, "port", DEFAULT_PORT, "The port on wich the bot is running")
-	VK_API_VER = cfg.Version
-	VK_API_ACCESS_TOKEN = cfg.Token
-	VK_API_ENDPOINT = cfg.Endpoint
-	if VK_API_VER == "NONE" || VK_API_ACCESS_TOKEN == "NONE" || VK_API_ENDPOINT == "NONE" {
+	flag.StringVar(&SEND_TARGET, "dest", DEFAULT_DESTINATION, "Messenger that will recieve data")
+	VK_API_VER = cfg.VKVersion
+	VK_API_ACCESS_TOKEN = cfg.VKToken
+	VK_API_ENDPOINT = cfg.VKEndpoint
+	MAX_API_ENDPOINT = cfg.MAXEndpoint
+	MAX_API_ACCESS_TOKEN = cfg.MAXToken
+	if (VK_API_VER == "NONE" || VK_API_ACCESS_TOKEN == "NONE" || VK_API_ENDPOINT == "NONE") && (SEND_TARGET == VK_DESTINATION || SEND_TARGET == DEFAULT_DESTINATION) || (MAX_API_ACCESS_TOKEN == "NONE" || MAX_API_ENDPOINT == "NONE") && (SEND_TARGET == MAX_DESTINATION || SEND_TARGET == DEFAULT_DESTINATION) {
 		isLoaded = false
 	}
 }
@@ -92,6 +109,7 @@ func main() {
 		conn, err := listener.Accept()
 		if err != nil {
 			//			fmt.Printf("Error acquired while recieving connection %s\n", err)
+			continue
 		}
 		go resendIntoBot(conn)
 	}
@@ -130,7 +148,20 @@ func resendIntoBot(connection net.Conn) {
 
 	connection.Write([]byte(OK_RESPONSE))
 
-	vk.ResendMessageVK("messages.send", map[string]string{VK_CHAT: responseData[TO], // test peer: 2000000001
-		VK_MESSAGE: url.QueryEscape(responseData[SUBJECT] + "\n" + responseData[MESSAGE]), VK_UNIQUE_CHECK_REQ: "0"},
-		VK_API_VER, VK_API_ENDPOINT, VK_API_ACCESS_TOKEN)
+	switch SEND_TARGET {
+	case DEFAULT_DESTINATION:
+		vk.ResendMessage(VK_MESSAGES_METHOD, map[string]string{VK_CHAT: responseData[TO],
+			VK_MESSAGE: url.QueryEscape(responseData[SUBJECT] + "\n" + responseData[MESSAGE]), VK_UNIQUE_CHECK_REQ: NOT_NEEDED},
+			VK_API_VER, VK_API_ENDPOINT, VK_API_ACCESS_TOKEN)
+
+		max.ResendMessage(MAX_MESSAGES_METHOD, url.QueryEscape(responseData[SUBJECT]+"\n"+responseData[MESSAGE]),
+			MAX_API_ENDPOINT, MAX_API_ACCESS_TOKEN, responseData[TO])
+	case VK_DESTINATION:
+		vk.ResendMessage(VK_MESSAGES_METHOD, map[string]string{VK_CHAT: responseData[TO],
+			VK_MESSAGE: url.QueryEscape(responseData[SUBJECT] + "\n" + responseData[MESSAGE]), VK_UNIQUE_CHECK_REQ: NOT_NEEDED},
+			VK_API_VER, VK_API_ENDPOINT, VK_API_ACCESS_TOKEN)
+	case MAX_DESTINATION:
+		max.ResendMessage(MAX_MESSAGES_METHOD, url.QueryEscape(responseData[SUBJECT]+"\n"+responseData[MESSAGE]),
+			MAX_API_ENDPOINT, MAX_API_ACCESS_TOKEN, responseData[TO])
+	}
 }
