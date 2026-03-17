@@ -32,6 +32,7 @@ const (
 	SUBJECT      = "Subject"
 	TO           = "To"
 	SAP_MON_DATA = `\[.*\]`
+	DESTINATION  = "Destination"
 
 	// Vk constants
 	VK_CHAT             = "peer_id"
@@ -150,18 +151,21 @@ func resendIntoBot(connection net.Conn) {
 
 	switch SEND_TARGET {
 	case DEFAULT_DESTINATION:
-		vk.ResendMessage(VK_MESSAGES_METHOD, map[string]string{VK_CHAT: responseData[TO],
-			VK_MESSAGE: url.QueryEscape(responseData[SUBJECT] + "\n" + responseData[MESSAGE]), VK_UNIQUE_CHECK_REQ: NOT_NEEDED},
-			VK_API_VER, VK_API_ENDPOINT, VK_API_ACCESS_TOKEN)
-
-		max.ResendMessage(MAX_MESSAGES_METHOD, url.QueryEscape(responseData[SUBJECT]+"\n"+responseData[MESSAGE]),
-			MAX_API_ENDPOINT, MAX_API_ACCESS_TOKEN, responseData[TO])
+		switch responseData[DESTINATION] {
+		case VK_DESTINATION:
+			vk.ResendMessage(VK_MESSAGES_METHOD, map[string]string{VK_CHAT: responseData[TO],
+				VK_MESSAGE: url.QueryEscape(responseData[SUBJECT] + "\n" + responseData[MESSAGE]), VK_UNIQUE_CHECK_REQ: NOT_NEEDED},
+				VK_API_VER, VK_API_ENDPOINT, VK_API_ACCESS_TOKEN)
+		case MAX_DESTINATION:
+			max.ResendMessage(MAX_MESSAGES_METHOD, responseData[SUBJECT]+"\n"+responseData[MESSAGE],
+				MAX_API_ENDPOINT, MAX_API_ACCESS_TOKEN, responseData[TO])
+		}
 	case VK_DESTINATION:
 		vk.ResendMessage(VK_MESSAGES_METHOD, map[string]string{VK_CHAT: responseData[TO],
 			VK_MESSAGE: url.QueryEscape(responseData[SUBJECT] + "\n" + responseData[MESSAGE]), VK_UNIQUE_CHECK_REQ: NOT_NEEDED},
 			VK_API_VER, VK_API_ENDPOINT, VK_API_ACCESS_TOKEN)
 	case MAX_DESTINATION:
-		max.ResendMessage(MAX_MESSAGES_METHOD, url.QueryEscape(responseData[SUBJECT]+"\n"+responseData[MESSAGE]),
+		max.ResendMessage(MAX_MESSAGES_METHOD, responseData[SUBJECT]+"\n"+responseData[MESSAGE],
 			MAX_API_ENDPOINT, MAX_API_ACCESS_TOKEN, responseData[TO])
 	}
 }
