@@ -25,6 +25,7 @@ const (
 	VK_DESTINATION      = "VK"
 	MAX_DESTINATION     = "MAX"
 	OK_RESPONSE         = "HTTP/1.1 200 OK\r\n"
+	NOT_OK_RESPONCE     = "HTTP/1.1 500 ERROR\r\n"
 	TIMEOUT             = 5 * time.Second
 
 	// Zabbix constants
@@ -128,7 +129,7 @@ func resendIntoBot(connection net.Conn) {
 			connection.Write([]byte(OK_RESPONSE))
 		} else {
 			//			fmt.Printf("Ошибка чтения запроса: %v\n", err)
-			connection.Write([]byte(OK_RESPONSE))
+			connection.Write([]byte(NOT_OK_RESPONCE))
 		}
 		return
 	}
